@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NovelFree - อ่านนิยายออนไลน์ฟรี</title>
+    <title>ThaiNovel - อ่านนิยายออนไลน์ฟรี</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
@@ -36,7 +36,7 @@
                 <div class="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center text-white shadow-sm">
                     <i class="fa-solid fa-book-open text-xl"></i>
                 </div>
-                <span class="text-2xl font-bold text-green-900 tracking-tight hidden sm:block">NovelFree</span>
+                <span class="text-2xl font-bold text-green-900 tracking-tight hidden sm:block">ThaiNovel</span>
             </div>
 
             <div class="flex-1 max-w-xl mx-4 hidden md:block">
@@ -62,16 +62,16 @@
     <!-- ส่วนท้ายเว็บ -->
     <footer class="bg-white border-t border-gray-200 mt-auto py-8">
         <div class="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
-            <div class="font-bold text-lg text-gray-700 mb-2">NovelFree</div>
+            <div class="font-bold text-lg text-gray-700 mb-2">ThaiNovel</div>
             <p>&copy; 2026 แพลตฟอร์มอ่านนิยายออนไลน์ อ่านฟรี อัปเดตไว</p>
         </div>
     </footer>
 
     <script>
-        // 🔥 URL เชื่อมต่อกับ Google Apps Script ของคุณ 🔥
+        // 🔥 ใส่ URL ของ Google Apps Script ของคุณตรงนี้ 🔥
         const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbzA1ZXHWBEXuwp4Gmu8SEc9q8WKUYi33NA8t1AixdE8PF2rXfklGQ6H6Z6vxCW--39J/exec"; 
 
-        // ตัวแปรเก็บข้อมูลชั่วคราวบนหน้าเว็บ
+        // ตัวแปรเก็บข้อมูล
         let novels = [];
         let chapters = [];
         let state = {
@@ -81,13 +81,69 @@
             readerSettings: { fontSize: 18, theme: 'theme-light' }
         };
 
-        // 1. ฟังก์ชันดึงข้อมูลจาก Google Sheets
+        // --- 1. ระบบจัดการ URL (Routing) ---
+        
+        // แปลงชื่อเรื่องให้เป็นรูปแบบ URL เช่น "Thriller Paradise" -> "Thriller-Paradise"
+        function getSlug(title) {
+            return title.trim().replace(/\s+/g, '-');
+        }
+
+        // อ่านค่าจาก URL และแปลงกลับมาเป็น state
+        function handleHashChange() {
+            const hash = decodeURIComponent(window.location.hash.substring(1)); // ลบ '#' ออก
+            
+            if (!hash || hash === '/') {
+                state.view = 'home';
+                state.activeNovelId = null;
+                state.activeChapterId = null;
+            } else {
+                const parts = hash.split('/').filter(Boolean); // แยกเป็นส่วนๆ เช่น ['Thriller-Paradise', 'ch1']
+                
+                if (parts.length >= 2) {
+                    const slug = parts[0];
+                    const action = parts[1]; // 'home' หรือ 'ch1'
+                    
+                    // ค้นหานิยายจากชื่อใน URL
+                    const novel = novels.find(n => getSlug(n.title) === slug || n.id === slug);
+                    
+                    if (novel) {
+                        if (action === 'home') {
+                            state.view = 'detail';
+                            state.activeNovelId = novel.id;
+                        } else if (action.startsWith('ch')) {
+                            const chNum = parseInt(action.replace('ch', ''));
+                            const chapter = chapters.find(c => c.novelId === novel.id && c.chapterNumber === chNum);
+                            
+                            if (chapter) {
+                                state.view = 'read';
+                                state.activeNovelId = novel.id;
+                                state.activeChapterId = chapter.id;
+                            } else {
+                                // ถ้าหาตอนไม่เจอ ให้กลับไปหน้าสารบัญ
+                                state.view = 'detail';
+                                state.activeNovelId = novel.id;
+                            }
+                        }
+                    } else {
+                        // ถ้าหาเรื่องไม่เจอ ให้กลับหน้าแรก
+                        state.view = 'home';
+                    }
+                } else {
+                    state.view = 'home';
+                }
+            }
+            render(); // สั่งให้วาดหน้าจอใหม่
+        }
+
+        // ดักจับการเปลี่ยน URL
+        window.addEventListener('hashchange', handleHashChange);
+
+        // --- 2. ฟังก์ชันดึงข้อมูลจาก Google Sheets ---
         async function loadDataFromExcel() {
             try {
                 const response = await fetch(GOOGLE_SHEET_API_URL);
                 const data = await response.json();
                 
-                // แปลงข้อมูลหมวดหมู่และยอดวิวให้พร้อมใช้งาน
                 novels = data.novels.map(n => ({
                     ...n,
                     views: parseInt(n.views) || 0,
@@ -95,7 +151,9 @@
                 }));
                 chapters = data.chapters || [];
                 
-                render(); // เรียกใช้วาดหน้าจอ
+                // เริ่มต้นการทำงานของ Router ทันทีที่โหลดข้อมูลเสร็จ (เพื่อเปิดหน้าที่ผู้ใช้พิมพ์ URL ค้างไว้)
+                handleHashChange(); 
+
             } catch (error) {
                 console.error("Error loading data:", error);
                 document.getElementById('loading-state').innerHTML = `
@@ -111,13 +169,13 @@
         // โหลดข้อมูลทันทีเมื่อเปิดเว็บ
         loadDataFromExcel();
 
-        // 2. ฟังก์ชันหลักสำหรับสลับหน้าจอ (Router)
+        // --- 3. ฟังก์ชันหลักสำหรับวาดหน้าจอ ---
         function render() {
             const appDiv = document.getElementById('app-content');
             if (state.view === 'home') appDiv.innerHTML = renderHome();
             else if (state.view === 'detail') appDiv.innerHTML = renderNovelDetail();
             else if (state.view === 'read') appDiv.innerHTML = renderReader();
-            window.scrollTo(0, 0); // เลื่อนกลับขึ้นบนสุดทุกครั้งที่เปลี่ยนหน้า
+            window.scrollTo(0, 0); 
         }
 
         // --- เทมเพลต: หน้าแรก (Home) ---
@@ -150,7 +208,7 @@
                                 <i class="fa-solid fa-eye text-[10px] mr-1"></i> ${displayViews.toLocaleString()}
                             </div>
                             <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 to-transparent p-3 pt-8">
-                                <span class="bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-sm uppercase tracking-wide">${novel.status}</span>
+                                <span class="${novel.status === 'จบแล้ว' || novel.status === 'เสร็จสมบูรณ์แล้ว' ? 'bg-blue-500' : 'bg-green-500'} text-white text-[10px] font-bold px-2 py-0.5 rounded-sm uppercase tracking-wide">${novel.status || 'อัปเดต'}</span>
                             </div>
                         </div>
                         <div class="p-4 flex flex-col flex-grow">
@@ -210,7 +268,7 @@
                         </div>
                         <div class="p-6 md:p-10 flex-1 flex flex-col">
                             <div class="flex flex-wrap gap-2 mb-4">
-                                <span class="${novel.status === 'จบแล้ว' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'} text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">${novel.status}</span>
+                                <span class="${novel.status === 'เสร็จสมบูรณ์แล้ว' || novel.status === 'จบแล้ว' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'} text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">${novel.status || 'กำลังเผยแพร่'}</span>
                                 ${novel.categories ? novel.categories.map(cat => `<span class="bg-gray-100 text-gray-600 text-xs font-medium px-3 py-1 rounded-full">#${cat}</span>`).join('') : ''}
                             </div>
                             
@@ -310,47 +368,43 @@
             `;
         }
 
-        // --- 3. การควบคุม (Actions) ---
+        // --- 4. การควบคุมและเปลี่ยนหน้า (เปลี่ยน URL) ---
 
-        // กลับหน้าแรก
         window.goHome = function() { 
-            state.view = 'home'; 
-            render(); 
+            // เปลี่ยน URL เป็น #/
+            window.location.hash = '/'; 
         }
         
-        // เข้าดูรายละเอียดนิยาย
         window.viewNovel = function(id) {
-            // ถ้าย้ายมาจากหน้า Home ให้ทำการเพิ่มยอดวิว
+            let n = novels.find(n => n.id === id);
+            if (!n) return;
+
+            // เพิ่มยอดวิว (เฉพาะกรณีที่ผู้ใช้กดมาจากหน้าแรก)
             if (state.view === 'home') {
-                // บวกตัวเลขบนหน้าเว็บก่อนทันที (ให้คนใช้งานรู้สึกว่าอัปเดตไว)
-                let n = novels.find(n => n.id === id);
-                if (n) n.views += 1;
-                
-                // ยิงคำสั่งไปอัปเดตลง Excel แบ็กกราว (ผู้ใช้ไม่ต้องรอ)
+                n.views += 1; // บวกบนหน้าจอชั่วคราว
                 fetch(GOOGLE_SHEET_API_URL, {
                     method: 'POST',
                     body: JSON.stringify({ action: 'incrementView', id: id })
                 }).catch(e => console.error("Error updating views:", e));
             }
             
-            state.view = 'detail';
-            state.activeNovelId = id;
-            render();
+            // เปลี่ยน URL เป็น #/ชื่อเรื่อง/home
+            window.location.hash = `/${getSlug(n.title)}/home`;
         }
 
-        // เข้าอ่านตอนที่กำหนด
         window.readChapter = function(id) {
-            state.view = 'read';
-            state.activeChapterId = id;
             const ch = chapters.find(c => c.id === id);
-            if(ch) state.activeNovelId = ch.novelId;
-            render();
+            if (!ch) return;
+            const n = novels.find(n => n.id === ch.novelId);
+            if (!n) return;
+
+            // เปลี่ยน URL เป็น #/ชื่อเรื่อง/ch(เลขตอน)
+            window.location.hash = `/${getSlug(n.title)}/ch${ch.chapterNumber}`;
         }
 
         // ปรับขนาดตัวอักษรหน้าอ่าน
         window.changeFontSize = function(delta) {
             let newSize = state.readerSettings.fontSize + delta;
-            // ลิมิตขนาดฟอนต์ไว้ไม่ให้เล็กไปหรือใหญ่ไป
             if (newSize >= 14 && newSize <= 36) {
                 state.readerSettings.fontSize = newSize;
                 document.getElementById('font-size-display').innerText = newSize;
