@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NovelFree - อ่านนิยายออนไลน์ฟรี</title>
+    <title>ThaiNovel - อ่านนิยายออนไลน์ฟรี</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
@@ -16,27 +16,30 @@
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         
         /* ธีมหน้าต่างอ่านนิยาย */
-        .theme-light { background-color: #ffffff; color: #333333; }
-        .theme-sepia { background-color: #f4ecd8; color: #5b4636; }
-        .theme-dark { background-color: #1a202c; color: #e2e8f0; }
+        .theme-light { background-color: #ffffff !important; color: #333333 !important; }
+        .theme-sepia { background-color: #f4ecd8 !important; color: #5b4636 !important; }
+        .theme-dark { background-color: #1a202c !important; color: #e2e8f0 !important; }
         
         /* ตกแต่ง Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .theme-dark ::-webkit-scrollbar-track { background: #2d3748; }
+        .theme-dark ::-webkit-scrollbar-thumb { background: #4a5568; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900 flex flex-col min-h-screen">
+<body id="main-body" class="bg-gray-50 text-gray-900 flex flex-col min-h-screen transition-colors duration-300">
 
-    <!-- แถบเมนูด้านบน -->
-    <header class="bg-white shadow-sm sticky top-0 z-50">
+    <!-- แถบเมนูด้านบน (ซ่อนเมื่ออยู่ในโหมดอ่าน) -->
+    <header id="main-header" class="bg-white shadow-sm sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
             <div class="flex items-center gap-2 cursor-pointer" onclick="goHome()">
                 <div class="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center text-white shadow-sm">
                     <i class="fa-solid fa-book-open text-xl"></i>
                 </div>
-                <span class="text-2xl font-bold text-green-900 tracking-tight hidden sm:block">NovelFree</span>
+                <span class="text-2xl font-bold text-green-900 tracking-tight hidden sm:block">ThaiNovel</span>
             </div>
 
             <div class="flex-1 max-w-xl mx-4 hidden md:block">
@@ -53,16 +56,16 @@
     </header>
 
     <!-- พื้นที่แสดงเนื้อหาหลัก -->
-    <main id="app-content" class="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+    <main id="app-content" class="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 transition-all duration-300">
         <div class="py-20 text-center text-gray-500" id="loading-state">
             <i class="fa-solid fa-spinner fa-spin text-4xl mb-4 text-green-600"></i><br>กำลังดึงข้อมูลนิยายสนุกๆ จากเซิร์ฟเวอร์...
         </div>
     </main>
 
-    <!-- ส่วนท้ายเว็บ -->
-    <footer class="bg-white border-t border-gray-200 mt-auto py-8">
+    <!-- ส่วนท้ายเว็บ (ซ่อนเมื่ออยู่ในโหมดอ่าน) -->
+    <footer id="main-footer" class="bg-white border-t border-gray-200 mt-auto py-8">
         <div class="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
-            <div class="font-bold text-lg text-gray-700 mb-2">NovelFree</div>
+            <div class="font-bold text-lg text-gray-700 mb-2">ThaiNovel</div>
             <p>&copy; 2026 แพลตฟอร์มอ่านนิยายออนไลน์ อ่านฟรี อัปเดตไว</p>
         </div>
     </footer>
@@ -79,42 +82,35 @@
             activeNovelId: null,
             activeChapterId: null,
             readerSettings: { fontSize: 18, theme: 'theme-light' },
-            chapterCurrentPage: 1, // เก็บสถานะหน้าปัจจุบันของสารบัญ
-            chapterItemsPerPage: 50 // จำนวนตอนต่อ 1 หน้า (เปลี่ยนเป็น 50 แล้ว)
+            chapterCurrentPage: 1,
+            chapterItemsPerPage: 50
         };
 
         // --- 1. ระบบจัดการ URL (Routing) ---
-        
-        // แปลงชื่อเรื่องให้เป็นรูปแบบ URL เช่น "Thriller Paradise" -> "Thriller-Paradise"
         function getSlug(title) {
             return title.trim().replace(/\s+/g, '-');
         }
 
-        // อ่านค่าจาก URL และแปลงกลับมาเป็น state
         function handleHashChange() {
-            const hash = decodeURIComponent(window.location.hash.substring(1)); // ลบ '#' ออก
+            const hash = decodeURIComponent(window.location.hash.substring(1));
             
             if (!hash || hash === '/') {
                 state.view = 'home';
                 state.activeNovelId = null;
                 state.activeChapterId = null;
-                state.chapterCurrentPage = 1; // รีเซ็ตหน้ากลับเป็นหน้า 1
+                state.chapterCurrentPage = 1;
             } else {
-                const parts = hash.split('/').filter(Boolean); // แยกเป็นส่วนๆ
+                const parts = hash.split('/').filter(Boolean);
                 
                 if (parts.length >= 2) {
                     const slug = parts[0];
-                    const action = parts[1]; // 'home' หรือ 'ch1'
+                    const action = parts[1];
                     
-                    // ค้นหานิยายจากชื่อใน URL
                     const novel = novels.find(n => getSlug(n.title) === slug || n.id === slug);
                     
                     if (novel) {
                         if (action === 'home') {
-                            // เช็คว่าถ้าเปิดเรื่องใหม่ ให้รีเซ็ตหน้าสารบัญเป็นหน้า 1
-                            if (state.activeNovelId !== novel.id) {
-                                state.chapterCurrentPage = 1; 
-                            }
+                            if (state.activeNovelId !== novel.id) state.chapterCurrentPage = 1; 
                             state.view = 'detail';
                             state.activeNovelId = novel.id;
                         } else if (action.startsWith('ch')) {
@@ -126,21 +122,19 @@
                                 state.activeNovelId = novel.id;
                                 state.activeChapterId = chapter.id;
                             } else {
-                                // ถ้าหาตอนไม่เจอ ให้กลับไปหน้าสารบัญ
                                 state.view = 'detail';
                                 state.activeNovelId = novel.id;
                                 state.chapterCurrentPage = 1;
                             }
                         }
                     } else {
-                        // ถ้าหาเรื่องไม่เจอ ให้กลับหน้าแรก
                         state.view = 'home';
                     }
                 } else {
                     state.view = 'home';
                 }
             }
-            render(); // สั่งให้วาดหน้าจอใหม่
+            render();
         }
 
         window.addEventListener('hashchange', handleHashChange);
@@ -177,9 +171,31 @@
         // --- 3. ฟังก์ชันหลักสำหรับวาดหน้าจอ ---
         function render(scrollToTop = true) {
             const appDiv = document.getElementById('app-content');
-            if (state.view === 'home') appDiv.innerHTML = renderHome();
-            else if (state.view === 'detail') appDiv.innerHTML = renderNovelDetail();
-            else if (state.view === 'read') appDiv.innerHTML = renderReader();
+            const mainHeader = document.getElementById('main-header');
+            const mainFooter = document.getElementById('main-footer');
+            const mainBody = document.getElementById('main-body');
+
+            // ซ่อนแถบเมนูหลักเมื่อเข้าหน้าอ่านนิยาย (เพื่อความ Immersive กว้างเต็มจอ)
+            if (state.view === 'read') {
+                mainHeader.style.display = 'none';
+                mainFooter.style.display = 'none';
+                
+                // กำหนดคลาสหน้าจออ่าน (เต็มความกว้างและจัดการสีพื้นหลังทั้ง Body)
+                appDiv.className = 'w-full';
+                mainBody.className = `${state.readerSettings.theme} flex flex-col min-h-screen transition-colors duration-300`;
+                
+                appDiv.innerHTML = renderReader();
+            } else {
+                mainHeader.style.display = 'block';
+                mainFooter.style.display = 'block';
+                
+                // คืนค่ารูปแบบปกติให้หน้าหลัก/สารบัญ
+                appDiv.className = 'flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 transition-all duration-300';
+                mainBody.className = `bg-gray-50 text-gray-900 flex flex-col min-h-screen transition-colors duration-300`;
+                
+                if (state.view === 'home') appDiv.innerHTML = renderHome();
+                else if (state.view === 'detail') appDiv.innerHTML = renderNovelDetail();
+            }
             
             if (scrollToTop) {
                 window.scrollTo(0, 0); 
@@ -233,15 +249,12 @@
             return html + `</div>`;
         }
 
-        // --- เทมเพลต: หน้ารายละเอียดนิยาย + ระบบแบ่งหน้า ---
+        // --- เทมเพลต: หน้ารายละเอียดนิยาย ---
         function renderNovelDetail() {
             const novel = novels.find(n => n.id === state.activeNovelId);
             if (!novel) return goHome();
 
-            // ดึงตอนและเรียงลำดับ
             const novelChapters = chapters.filter(c => c.novelId === novel.id).sort((a, b) => a.chapterNumber - b.chapterNumber);
-            
-            // --- ระบบแบ่งหน้า (Pagination) สำหรับฝั่งคนอ่าน ---
             const totalItems = novelChapters.length;
             const totalPages = Math.ceil(totalItems / state.chapterItemsPerPage);
             
@@ -275,12 +288,9 @@
                 `;
             });
 
-            // สร้างปุ่มแบ่งหน้า (Pagination UI)
             let paginationHtml = '';
             if (totalPages > 1) {
                 let pageButtons = '';
-                
-                // ให้แสดงหน้าใกล้เคียง
                 let startPage = Math.max(1, state.chapterCurrentPage - 2);
                 let endPage = Math.min(totalPages, state.chapterCurrentPage + 2);
 
@@ -368,7 +378,7 @@
             `;
         }
 
-        // --- เทมเพลต: หน้าอ่านนิยาย (Reader) ---
+        // --- เทมเพลต: หน้าอ่านนิยาย (Reader) ขยายเต็มจอและแถบลอยตายตัว ---
         function renderReader() {
             const chapter = chapters.find(c => c.id === state.activeChapterId);
             if (!chapter) return viewNovel(state.activeNovelId);
@@ -379,42 +389,60 @@
             const prevCh = currentIndex > 0 ? novelChapters[currentIndex - 1] : null;
             const nextCh = currentIndex < novelChapters.length - 1 ? novelChapters[currentIndex + 1] : null;
 
+            // กำหนดสีของแถบ Navbar ให้เข้ากับ Theme ที่ผู้ใช้เลือก
+            let navClass = "bg-white/95 border-gray-200 text-gray-900";
+            if (state.readerSettings.theme === 'theme-sepia') {
+                navClass = "bg-[#f4ecd8]/95 border-[#e0d6be] text-[#5b4636]";
+            } else if (state.readerSettings.theme === 'theme-dark') {
+                navClass = "bg-[#1a202c]/95 border-gray-700 text-[#e2e8f0]";
+            }
+
             return `
-                <div class="${state.readerSettings.theme} min-h-screen -mt-4 sm:-mt-6 lg:-mt-8 -mx-4 sm:-mx-6 lg:-mx-8 p-4 sm:p-8 transition-colors duration-300" id="reader-container">
+                <!-- คอนเทนเนอร์หลักของหน้าอ่าน -->
+                <div class="w-full">
                     
-                    <!-- เมนูเครื่องมือลอยตัว -->
-                    <div class="max-w-4xl mx-auto bg-black/10 backdrop-blur-md rounded-2xl p-3 sm:p-4 mb-8 flex flex-wrap justify-between items-center gap-4 sticky top-20 z-40 border border-white/20 shadow-sm">
-                        <button onclick="viewNovel('${novel.id}')" class="flex items-center gap-2 font-bold hover:opacity-70 px-3 py-1.5 rounded-lg transition-colors">
-                            <i class="fa-solid fa-arrow-left"></i> <span class="hidden sm:inline">สารบัญ</span>
-                        </button>
-                        
-                        <div class="flex items-center gap-2 sm:gap-4 bg-white/60 dark:bg-black/20 px-4 py-2 rounded-full backdrop-blur-sm">
-                            <span class="text-xs sm:text-sm font-bold opacity-70">ขนาดอักษร</span>
-                            <button onclick="changeFontSize(-2)" class="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-white shadow hover:bg-gray-100 text-black font-bold">A-</button>
-                            <span class="text-sm font-bold w-6 text-center" id="font-size-display">${state.readerSettings.fontSize}</span>
-                            <button onclick="changeFontSize(2)" class="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-white shadow hover:bg-gray-100 text-black font-bold">A+</button>
-                        </div>
-                        
-                        <div class="flex items-center gap-2">
-                            <button onclick="changeTheme('theme-light')" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-gray-300 bg-white shadow-sm" title="พื้นหลังสว่าง"></button>
-                            <button onclick="changeTheme('theme-sepia')" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-gray-300 bg-[#f4ecd8] shadow-sm" title="โหมดถนอมสายตา"></button>
-                            <button onclick="changeTheme('theme-dark')" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-gray-500 bg-[#1a202c] shadow-sm" title="โหมดกลางคืน"></button>
+                    <!-- แถบเมนูลอยตัว (Fixed Navbar) ติดบนสุดตลอดเวลา -->
+                    <div class="fixed top-0 left-0 w-full z-50 ${navClass} backdrop-blur-md border-b shadow-sm transition-colors duration-300">
+                        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center gap-2">
+                            
+                            <!-- ปุ่มกลับสารบัญ -->
+                            <button onclick="viewNovel('${novel.id}')" class="flex items-center gap-2 font-bold hover:opacity-70 px-2 py-1.5 rounded-lg transition-colors">
+                                <i class="fa-solid fa-arrow-left"></i> <span class="hidden sm:inline">สารบัญ</span>
+                            </button>
+                            
+                            <!-- เครื่องมือปรับแต่ง -->
+                            <div class="flex items-center gap-3 sm:gap-6">
+                                <!-- ขนาดอักษร -->
+                                <div class="flex items-center gap-2 sm:gap-4 bg-black/5 dark:bg-white/10 px-4 py-1.5 rounded-full">
+                                    <span class="text-xs sm:text-sm font-bold opacity-70 hidden sm:inline">ขนาดอักษร</span>
+                                    <button onclick="changeFontSize(-2)" class="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-gray-800 shadow-sm hover:opacity-80 font-bold text-gray-900 dark:text-white">-</button>
+                                    <span class="text-sm font-bold w-6 text-center" id="font-size-display">${state.readerSettings.fontSize}</span>
+                                    <button onclick="changeFontSize(2)" class="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-gray-800 shadow-sm hover:opacity-80 font-bold text-gray-900 dark:text-white">+</button>
+                                </div>
+                                
+                                <!-- โหมดสี -->
+                                <div class="flex items-center gap-2">
+                                    <button onclick="changeTheme('theme-light')" class="w-8 h-8 rounded-full border-2 border-gray-300 bg-white shadow-sm" title="สว่าง"></button>
+                                    <button onclick="changeTheme('theme-sepia')" class="w-8 h-8 rounded-full border-2 border-gray-300 bg-[#f4ecd8] shadow-sm" title="ถนอมสายตา"></button>
+                                    <button onclick="changeTheme('theme-dark')" class="w-8 h-8 rounded-full border-2 border-gray-500 bg-[#1a202c] shadow-sm" title="มืด"></button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
-                    <!-- เนื้อหานิยาย -->
-                    <div class="max-w-3xl mx-auto bg-transparent">
-                        <h4 class="text-center font-bold opacity-50 mb-3 uppercase tracking-wider text-sm">${novel.title}</h4>
-                        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-center mb-10 pb-8 border-b border-current border-opacity-10 leading-tight">ตอนที่ ${chapter.chapterNumber} : ${chapter.title}</h1>
+                    <!-- พื้นที่เนื้อหานิยาย (กว้างเต็มจอ และเว้นระยะด้านบนหลบ Navbar) -->
+                    <div class="pt-24 pb-32 max-w-5xl mx-auto px-4 sm:px-8 md:px-12 w-full">
+                        <h4 class="text-center font-bold opacity-50 mb-3 uppercase tracking-wider text-sm mt-4">${novel.title}</h4>
+                        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-center mb-12 pb-8 border-b border-current border-opacity-10 leading-tight">ตอนที่ ${chapter.chapterNumber} : ${chapter.title}</h1>
                         
                         <div class="novel-text content-area transition-all duration-300 min-h-[50vh] whitespace-pre-line" style="font-size: ${state.readerSettings.fontSize}px;">
                             ${chapter.content}
                         </div>
                         
                         <!-- ปุ่มเปลี่ยนตอนด้านล่าง -->
-                        <div class="mt-20 pt-8 border-t border-current border-opacity-10 flex justify-between items-center pb-24">
+                        <div class="mt-20 pt-8 border-t border-current border-opacity-10 flex justify-between items-center pb-10">
                             ${prevCh 
-                                ? `<button onclick="readChapter('${prevCh.id}')" class="flex items-center gap-2 px-6 py-3.5 rounded-full bg-current bg-opacity-5 hover:bg-opacity-10 font-bold transition-colors"><i class="fa-solid fa-arrow-left"></i> <span class="hidden sm:inline">ตอนก่อนหน้า</span></button>` 
+                                ? `<button onclick="readChapter('${prevCh.id}')" class="flex items-center gap-2 px-6 py-3.5 rounded-full border-2 border-current opacity-60 hover:opacity-100 font-bold transition-all"><i class="fa-solid fa-arrow-left"></i> <span class="hidden sm:inline">ตอนก่อนหน้า</span></button>` 
                                 : `<div></div>`}
                             
                             ${nextCh 
@@ -444,19 +472,15 @@
                 }).catch(e => console.error("Error updating views:", e));
             }
             
-            // รีเซ็ตหน้าสารบัญให้กลับเป็นหน้าแรกเมื่อผู้ใช้เลือกเปิดเรื่องใหม่
-            state.chapterCurrentPage = 1;
             window.location.hash = `/${getSlug(n.title)}/home`;
         }
 
-        // ฟังก์ชันสำหรับเปลี่ยนหน้าในสารบัญ
         window.changeChapterPage = function(pageNumber) {
             state.chapterCurrentPage = pageNumber;
-            // สั่ง render แบบไม่เลื่อนไปบนสุดของจอ แต่ให้เลื่อนมาที่ตำแหน่งสารบัญ
             render(false);
             const chapterSection = document.getElementById('chapter-list-section');
             if (chapterSection) {
-                const yOffset = -80; // เผื่อระยะ Navbar ลอยตัว
+                const yOffset = -80; 
                 const y = chapterSection.getBoundingClientRect().top + window.pageYOffset + yOffset;
                 window.scrollTo({top: y, behavior: 'smooth'});
             }
@@ -473,7 +497,7 @@
 
         window.changeFontSize = function(delta) {
             let newSize = state.readerSettings.fontSize + delta;
-            if (newSize >= 14 && newSize <= 36) {
+            if (newSize >= 14 && newSize <= 42) {
                 state.readerSettings.fontSize = newSize;
                 document.getElementById('font-size-display').innerText = newSize;
                 document.querySelector('.content-area').style.fontSize = newSize + 'px';
@@ -482,7 +506,14 @@
 
         window.changeTheme = function(themeName) {
             state.readerSettings.theme = themeName;
-            document.getElementById('reader-container').className = `${themeName} min-h-screen -mt-4 sm:-mt-6 lg:-mt-8 -mx-4 sm:-mx-6 lg:-mx-8 p-4 sm:p-8 transition-colors duration-300`;
+            
+            // บังคับเปลี่ยนสี background ทั้งหน้ากระดาษทันทีเมื่อกดปุ่มเปลี่ยนสี
+            if (state.view === 'read') {
+                document.getElementById('main-body').className = `${themeName} flex flex-col min-h-screen transition-colors duration-300`;
+            }
+            
+            // สั่ง render เพื่อให้ตัว Navbar ด้านบนอัปเดตสีตามไปด้วยแบบไม่เลื่อนหน้าจอ
+            render(false);
         }
 
     </script>
